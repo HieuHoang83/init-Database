@@ -2,28 +2,36 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { IUser } from 'src/users/users.interface';
+import { IUser } from 'src/interface/users.interface';
+import { RolesService } from 'src/roles/roles.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly roleService: RolesService
+  ) {
     super({
-      //lay token tu request
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_ACCESS_EXPIRE_SECRET'),
+      secretOrKey: configService.get<string>('JWT_ACCESS_TOKEN_SECRET'),
     });
   }
 
+  // trả về response sau khi xác thực token thành công
   async validate(payload: IUser) {
-    //gan them permission cho req.user
-    //req.user
-    return {
-      _id: payload._id,
-      name: payload.name,
-      email: payload.email,
-      role: payload.role,
-      permissions: payload.permissions,
+    const { id, email, name, role } = payload;
+    
+    // get permissions from role
+    let foundRole = null
+    if (role?.id) foundRole = await this.roleService.findOne(role.id);
+
+    return { 
+      id, 
+      email, 
+      name,
+      role,
+      permissions: foundRole?.permission ?? []
     };
   }
 }

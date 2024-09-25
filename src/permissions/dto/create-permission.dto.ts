@@ -1,14 +1,41 @@
-import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber } from "class-validator"
+import { ApiProperty } from "@nestjs/swagger"
+
+enum Method {
+  GET = "GET",
+  POST = "POST",
+  PUT = "PUT",
+  PATCH = "PATCH",
+  DELETE = "DELETE",
+}
+
+enum Module {
+  USER = "USERS",
+  PERMISSION = "PERMISSIONS",
+  ROLE = "ROLES",
+  COMPANY = "COMPANIES",
+  RESUME = "RESUMES",
+}
+
 export class CreatePermissionDto {
-  @IsNotEmpty({ message: 'name k duoc de trong' })
-  name: string;
+  @ApiProperty()
+  @IsNotEmpty()
+  name: string
 
-  @IsNotEmpty({ message: 'ApiPath k duoc de trong' })
-  apiPath: string;
+  @ApiProperty()
+  @IsNotEmpty()
+  apiPath: string
 
-  @IsNotEmpty({ message: 'Method k duoc de trong' })
-  method: string;
+  @ApiProperty()
+  @IsNotEmpty()
+  @IsEnum(Method)
+  method: string
 
-  @IsNotEmpty({ message: 'Module k duoc de trong' })
-  module: string;
+  @ApiProperty()
+  @IsNotEmpty()
+  @IsEnum(Module)
+  module: string 
+
+  @IsNumber()
+  roleId: number
 }

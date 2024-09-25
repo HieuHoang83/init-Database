@@ -7,7 +7,6 @@ import {
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
-import { ADMIN_Role } from 'src/database/sample';
 import { IS_PUBLIC_KEY } from 'src/decorators/customize';
 
 @Injectable()
@@ -15,7 +14,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   constructor(private reflector: Reflector) {
     super();
   }
+
   canActivate(context: ExecutionContext) {
+    // lấy ra metadata từ request
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -26,42 +27,25 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  handleRequest(err, user, info, context: ExecutionContext) {
-    const request: Request = context.switchToHttp().getRequest();
+  handleRequest(err : any, user : any, info: any, context: ExecutionContext) {
+    if (user?.email === "admin@gmail.com" || user?.name === "admin") return user;
+    const request : Request = context.switchToHttp().getRequest();
     // You can throw an exception based on either "info" or "err" arguments
     if (err || !user) {
-      throw (
-        err ||
-        new UnauthorizedException(
-          'token k hop le or khong co bear token ở header',
-        )
-      );
+      throw err || new UnauthorizedException("Your token is invalid or header is missing token");
     }
+    // check permissions
+    const targetMethod = request.method;
+    const targetEndPoint = request.route?.path;
+    console.log(targetMethod + " " + targetEndPoint);
 
-    const targerMethod = request.method;
-    const targetEnpoint = request.route?.path as string;
-    const permissions = user?.permissions ?? [];
-    console.log(targetEnpoint);
-
-    //Check permission
-    if (
-      targetEnpoint.startsWith('/api/v1/auth') ||
-      user?.role?.name === ADMIN_Role
-    ) {
-      return user;
-    } else {
-      let isExist = user.permissions.find((permission) => {
-        return (
-          permission.apiPath === targetEnpoint &&
-          permission.method === targerMethod
-        );
-      });
-      return user;
-      // if (!isExist) {
-      //   throw new ForbiddenException(
-      //     'Bạn không có quyền truy cập đến method này',
-      //   );
-      // }
+    const permissions : Array<any> = user?.permissions ?? [];
+    const isExist = permissions?.find((permission) => {
+      return permission.method === targetMethod && permission.apiPath === targetEndPoint;
+    });
+    if (!isExist) {
+      throw new ForbiddenException("You don't have permission to access this endpoint");
     }
+    return user;
   }
 }

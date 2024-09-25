@@ -1,61 +1,64 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { PermissionsService } from './permissions.service';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
-import { ResponseMessage, User } from 'src/decorators/customize';
-import { IUser } from 'src/users/users.interface';
+import { GetPaginateInfo, ResponseMessage } from 'src/decorators/customize';
+import { ExistPermission } from 'src/core/permission.guard';
+import { CheckValidId } from 'src/core/id.guard';
+import { PaginateInfo } from 'src/interface/paginate.interface';
+import { ApiTags, ApiQuery } from '@nestjs/swagger';
+import { CheckQueryForPagination } from 'src/core/query.guard';
 
-@Controller('permissions')
+@ApiTags('permissions')
+@Controller({ path: 'permissions', version: '1' })
 export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}
 
   @Post()
-  @ResponseMessage('create Permission')
+  @UseGuards(ExistPermission)
+  @ResponseMessage('Create permission successfully')
   create(
-    @Body() createPermissionDto: CreatePermissionDto,
-    @User() user: IUser,
+    @Body() createPermissionDto: CreatePermissionDto
   ) {
-    return this.permissionsService.create(createPermissionDto, user);
+    return this.permissionsService.create(createPermissionDto);
   }
 
-  @ResponseMessage('get paginate Permission')
-  @Get('')
-  GetPaginate(
-    @Query('current') currentPage: number,
-    @Query('pageSize') limit: number,
-    @Query() qs: string,
+
+  // lấy thông tin permission có phân trang
+  @Get()
+  @ApiQuery({ name: 'page', required: false, description: "default: 1", type: Number })
+  @ApiQuery({ name: 'limit', required: false, description: "default: 10", type: Number })
+  @UseGuards(CheckQueryForPagination)
+  @ResponseMessage("Fetch list of permissions with pagination")
+  findByPagination(
+    @GetPaginateInfo() info: PaginateInfo
   ) {
-    return this.permissionsService.GetPaginate(currentPage, limit, qs);
+    return this.permissionsService.findAll(info);
   }
 
   @Get(':id')
-  @ResponseMessage('get Permission by id')
+  @UseGuards(CheckValidId)
+  @ResponseMessage('Get permission successfully')
   findOne(@Param('id') id: string) {
-    return this.permissionsService.findOne(id);
+    return this.permissionsService.findOne(+id);
   }
 
   @Patch(':id')
-  @ResponseMessage('update Permission by id')
+  @UseGuards(CheckValidId)
+  @ResponseMessage('Update permission successfully')
   update(
-    @Param('id') id: string,
-    @Body() updatePermissionDto: UpdatePermissionDto,
-    @User() user: IUser,
+    @Param('id') id: string, 
+    @Body() updatePermissionDto: UpdatePermissionDto
   ) {
-    return this.permissionsService.update(id, updatePermissionDto, user);
+    return this.permissionsService.update(+id, updatePermissionDto);
   }
 
   @Delete(':id')
-  @ResponseMessage('delete Permission by id')
-  remove(@Param('id') id: string) {
-    return this.permissionsService.remove(id);
+  @UseGuards(CheckValidId)
+  @ResponseMessage('Remove permission successfully')
+  remove(
+    @Param('id') id: string
+  ) {
+    return this.permissionsService.remove(+id);
   }
 }

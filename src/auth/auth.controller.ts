@@ -1,91 +1,63 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Render,
-  Req,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
-import { Public, ResponseMessage, User } from 'src/decorators/customize';
+import { Post, UseGuards, Controller, Get, Body, Res, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { Public, ResponseMessage, User } from 'src/decorators/customize';
 import { LocalAuthGuard } from './local-auth.guard';
-import { IUser } from 'src/users/users.interface';
-import {
-  LOGINDTO,
-  RefreshTokenDTO,
-  RegisterUserSocialDto,
-  RegisterUserSystemDto,
-} from 'src/users/dto/create-user.dto';
+import { IUser } from 'src/interface/users.interface';
+import { UniqueGmail } from 'src/core/gmail.guard';
 import { Request, Response } from 'express';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { ApiBody, ApiTags } from '@nestjs/swagger';
+import { RegisterDto } from './dto/register-user.dto';
+import { UserLoginDto } from './dto/login-user.dto';
 
-@Controller('auth')
+@ApiTags('auth')
+@Controller({ path: 'auth', version: '1' })
 export class AuthController {
-  constructor(private readonly authservice: AuthService) {}
+  constructor(
+    private readonly authService: AuthService
+  ) {}
 
-  @Public() //public de ngan kiem tra token cho ham login
-  @UseGuards(ThrottlerGuard) //ThrottlerGuard: ap dung limit call api /1 may trong 1 khoang tg
-  @Throttle({ default: { limit: 3, ttl: 60000 } }) //ghi de limit mac dinh
-  @ResponseMessage('user login ') //loi nhan khi call api success
-  @UseGuards(LocalAuthGuard) // Xác thực tk ,mk đăng nhập có thành công hay k để trả về user trong request.user
-  @Post('/loginByEmail')
-  handleLogin(@Req() request, @Res({ passthrough: true }) response: Response) {
-    return this.authservice.login(request.user, response);
-  }
-
-  @Public() //public de ngan kiem tra token cho ham login
-  @ResponseMessage('user login ') //loi nhan khi call api success
-  @UseGuards(ThrottlerGuard) //ThrottlerGuard: ap dung limit call api /1 may trong 1 khoang tg
-  @Throttle({ default: { limit: 3, ttl: 60000 } }) //ghi de limit mac dinh
-  @Post('/loginbySocial')
-  handleLoginBySocial(
-    @Body() loginDto: LOGINDTO,
-    @Res({ passthrough: true }) response: Response,
+  @Public()
+  @ApiBody({ type: UserLoginDto })
+  @UseGuards(LocalAuthGuard)
+  @ResponseMessage("Login success")
+  @Post('login')
+  handleLogin(
+    @User() user : IUser,
+    @Res({ passthrough: true }) response : Response
   ) {
-    return this.authservice.loginsocial(loginDto, response);
+    return this.authService.login(user, response);
+  }
+
+  @Get('account')
+  @ResponseMessage("Get profile success")
+  getProfile(@User() user : IUser) {
+    return user;
   }
 
   @Public()
-  @ResponseMessage('register a  new user')
-  @Post('/registerSystem')
-  RegisterSystemUser(@Body() RegisterUserSystemDto: RegisterUserSystemDto) {
-    return this.authservice.RegisterSystemUser(RegisterUserSystemDto);
+  @UseGuards(UniqueGmail)
+  @Post('register')
+  @ResponseMessage("Register success")
+  handleRegister(@Body() regiterDto : RegisterDto) {
+    return this.authService.register(regiterDto);
   }
 
   @Public()
-  @Post('/registerSocial')
-  @ResponseMessage('register a  new user')
-  RegisterSocialUser(@Body() registerUserSocialDto: RegisterUserSocialDto) {
-    return this.authservice.RegisterSocialUser(registerUserSocialDto);
-  }
-  //k sd public vi k lay duoc user tu jwt truyen vao
-  @ResponseMessage('get account')
-  @Get('/account')
-  GetByJWT(@User() user: IUser) {
-    return {
-      user: user,
-    };
-  }
-
-  @Public()
-  @ResponseMessage('reset access token')
-  @Post('/refresh')
-  GetByRefreshToken(
-    @Body() refreshTokenDTO: RefreshTokenDTO,
-    @Res({ passthrough: true }) response: Response,
+  @Get('refresh')
+  @ResponseMessage("Get profile by refresh token")
+  hanldeRefreshToken(
+    @Req() request : Request,
+    @Res({ passthrough: true }) response : Response
   ) {
-    //let refreshToken = request.cookies['refreshtoken'];
-    return this.authservice.processNewToken(refreshTokenDTO, response);
+    return this.authService.processNewToken(request, response)
   }
 
-  @ResponseMessage('logout account')
-  @Post('/logout')
-  //@User de lay du lieu tu jwt truyen len
-  Logout(@User() user: IUser, @Res({ passthrough: true }) response: Response) {
-    return this.authservice.logout(user, response);
+  @Get('logout')
+  @ResponseMessage("Log out success")
+  handleLogout(
+    @User() user : IUser,
+    @Res({ passthrough: true }) response : Response
+  ) {
+    return this.authService.logout(user, response)
   }
 }

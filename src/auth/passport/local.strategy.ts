@@ -8,11 +8,11 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
   constructor(private authService: AuthService) {
     super();
   }
-  //dang nhap lay user vs password by formInput
+  // override validate method from PassportStrategy type Local
   async validate(username: string, password: string): Promise<any> {
     const user = await this.authService.validateUser(username, password);
     if (!user) {
-      throw new UnauthorizedException('Username/Password is not Exist!');
+      throw new UnauthorizedException("Username or password is invalid");
     }
     return user;
   }
